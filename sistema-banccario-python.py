@@ -1,3 +1,4 @@
+import textwrap
 from abc import ABC, abstractclassmethod, abstractproperty
 from datetime import datetime
 
@@ -77,7 +78,6 @@ class Conta:
         
         return True
 
-
 class ContaCorrente(Conta):
     def __init__(self, numero, cliente, limite = 500, limite_saques = 3):
         super().__init__(numero, cliente)
@@ -110,7 +110,6 @@ class ContaCorrente(Conta):
             Titular:\t{self.cliente.nome}
         """
     
-
 class Historico:
     def __init__(self):
         self._transacoes = []
@@ -153,7 +152,6 @@ class Saque(Transacao):
         if sucesso_transacao:
             conta.historico.adicionar_transacao(self)
 
-
 class Deposito(Transacao):
     def __init__(self, valor):
         self._valor = valor
@@ -167,3 +165,160 @@ class Deposito(Transacao):
 
         if sucesso_transacao:
             conta.historico.adicionar_transacao(self)
+
+def menu():
+    menu = """
+    =============== Menu =============== 
+    [d] - Depositar
+    [s] - Sacar
+    [e] - Extrato
+    [nc] - Nova Conta
+    [lc] - Listar Contas
+    [nu] - Novo Usuário
+    [q] - Sair
+    ====================================
+    """
+    return input(textwrap.dedent(menu))
+
+def filtrar_cliente(cpf,clientes):
+    clientes_filtrados = [cliente for cliente in clientes if cliente.cpf == cpf]
+    return clientes_filtrados[0] if clientes_filtrados else None
+
+def recuperar_conta_cliente(cliente):
+    if not cliente.contas:
+        print("\n***** Falha! Cliente não possui conta. *****")
+        return
+    
+    # FIXME: Não permite cliente escolher a conta 
+    return cliente.contas[0]
+
+def depositar(clientes):
+    cpf = input("Informe o CPF do clinete: ")
+    cliente = filtrar_cliente(cpf, cliente)
+
+    if not cliente:
+        print("***** Falha! Cliente não encontrado. *****")
+        return
+    
+    valor = float(input("Informe o valor do deposito: "))
+    transacao = Deposito(valor)
+
+    conta = recuperar_conta_cliente(cliente)
+    if not conta:
+        return
+    
+    cliente.realizar_transacao(conta, transacao)
+
+def sacar():
+    cpf = input("Informe o CPF do clinete: ")
+    cliente = filtrar_cliente(cpf, cliente)
+
+    if not cliente:
+        print("***** Falha! Cliente não encontrado. *****")
+        return
+    
+    valor = float(input("Informe o valor do saque: "))
+    transacao = Saque(valor)
+
+    conta = recuperar_conta_cliente(cliente)
+    if not conta:
+        return
+    
+    cliente.realizar_transacao(conta, transacao)
+
+def exibir_extrato(clientes):
+    cpf = input("Informe o CPF do clinete: ")
+    cliente = filtrar_cliente(cpf, cliente)
+
+    if not cliente:
+        print("***** Falha! Cliente não encontrado. *****")
+        return
+    
+    conta = recuperar_conta_cliente(cliente)
+    if not conta:
+        return
+    
+    print("\n================ EXTRATO ================")
+    transacoes = conta.historico.transacoes
+
+    extrato = ""
+    if not transacoes:
+        extrato = "Não foram realizadas movimentações."
+    else:
+        for transacao in transacoes:
+            extrato += f"\n{transacao['tipo']}:\n\tR$ {transacao['valor']:.2f}"
+
+    print(extrato)
+    print(f"\nSaldo:\n\tR$ {conta.saldo:.2f}")
+    print("==========================================")
+
+def criar_cliente(clientes): 
+    cpf = input("Informe o CPF do (somente número): ")
+    cliente = filtrar_cliente(cpf, cliente)
+
+    if cliente:
+        print("***** Falha! Já existe cliente com esse CPF. *****")
+        return
+    
+    nome = input("Informe o nome completo: ")
+    data_nascimento = input("Informe a data de nascimento (formato dd-mm-aaaa):")
+    endereco = input("Informe o endereço (formato logradouro, nro - bairro - cidade/sigla estado): ")
+
+    cliente = PessoaFisica(nome= nome, data_nascimento= data_nascimento, endereco= endereco)
+
+    clientes.append(cliente)
+
+    print("\n$$$$$ Cliente criado com sucesso! $$$$$")
+    
+def criar_conta(numero_conta, contas):
+    cpf = input("Informe o CPF do clinete: ")
+    cliente = filtrar_cliente(cpf, cliente)
+
+    if not cliente:
+        print("\n***** Falha! Usuário não encontrado, criação de conta encerrado. *****")
+        return
+    
+    conta = ContaCorrente.nova_conta(cliente=cliente, numero=numero_conta)
+    contas.append(conta)
+    cliente.contas.append(conta)
+
+    print("\n$$$$$ Conta criada com sucesso! $$$$$")
+
+def listar_contas(contas):
+    for conta in contas:
+        print("=" * 100)
+        print(textwrap.dedent(str(conta)))
+
+def main():
+    clientes = []
+    contas = []
+
+    while True:
+        opcao = menu()
+
+        if opcao == "d":
+            depositar(clientes)
+
+        elif opcao == "s":
+            sacar(clientes)
+
+        elif opcao == "e":
+            exibir_extrato(clientes)
+
+        elif opcao == "nu":
+            criar_cliente(clientes)
+
+        elif opcao == "nc":
+            numero_conta = len(contas) + 1
+            criar_conta(numero_conta, clientes, contas)
+
+        elif opcao == "lc":
+            listar_contas(contas)
+
+        elif opcao == "q":
+            break
+
+        else:
+            print("\n***** Falha! Por favor selecione novamente a operação desejada. *****")
+
+main()
